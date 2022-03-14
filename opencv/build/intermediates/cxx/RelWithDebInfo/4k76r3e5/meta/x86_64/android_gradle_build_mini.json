@@ -1,0 +1,33 @@
+{
+  "buildFiles": [
+    "/Users/rie/AndroidStudioProjects/GiftManagement/opencv/libcxx_helper/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/rie/Library/Android/sdk/cmake/3.10.2.4988404/bin/ninja",
+      "-C",
+      "/Users/rie/AndroidStudioProjects/GiftManagement/opencv/.cxx/RelWithDebInfo/4k76r3e5/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/rie/Library/Android/sdk/cmake/3.10.2.4988404/bin/ninja",
+    "-C",
+    "/Users/rie/AndroidStudioProjects/GiftManagement/opencv/.cxx/RelWithDebInfo/4k76r3e5/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "opencv_jni_shared-RelWithDebInfo-x86_64": {
+      "artifactName": "opencv_jni_shared",
+      "buildCommandComponents": [
+        "/Users/rie/Library/Android/sdk/cmake/3.10.2.4988404/bin/ninja",
+        "-C",
+        "/Users/rie/AndroidStudioProjects/GiftManagement/opencv/.cxx/RelWithDebInfo/4k76r3e5/x86_64",
+        "opencv_jni_shared"
+      ],
+      "abi": "x86_64",
+      "output": "/Users/rie/AndroidStudioProjects/GiftManagement/opencv/.cxx/RelWithDebInfo/4k76r3e5/x86_64/libopencv_jni_shared.a",
+      "runtimeFiles": []
+    }
+  }
+}
