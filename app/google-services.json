@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "96861673785",
+    "project_id": "gift-management-rk",
+    "storage_bucket": "gift-management-rk.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:96861673785:android:3c2462646b1047bcc770e8",
+        "android_client_info": {
+          "package_name": "com.rkapp.giftmanagement"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "96861673785-4fa1i0s6kn3ibu24qdr57b4q3olm1t9c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0drNAGyjDZk1Ag59PIXgyKGAgGUY5F7w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "96861673785-4fa1i0s6kn3ibu24qdr57b4q3olm1t9c.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
