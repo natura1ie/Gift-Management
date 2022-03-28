@@ -18,7 +18,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.label.ImageLabeling
 import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import com.rkapp.giftmanagement.R
 import com.rkapp.giftmanagement.databinding.ActivityMainBinding
 import com.rkapp.giftmanagement.viewmodel.MainViewModel
@@ -108,11 +108,13 @@ class MainActivity : AppCompatActivity() {
             .setConfidenceThreshold(0.7f)
             .build()
 
-        private val textOptions = TextRecognizerOptions.DEFAULT_OPTIONS
+        // 英語のみの場合は直下ので良い
+//        private val textOptions = TextRecognizerOptions.DEFAULT_OPTIONS
+        private val jTextOptions = JapaneseTextRecognizerOptions.Builder().build()
 
         private val labeler = ImageLabeling.getClient(labelOptions)
 
-        private val detector = TextRecognition.getClient(textOptions)
+        private val textRecognizer = TextRecognition.getClient(jTextOptions)
 
         @SuppressLint("UnsafeExperimentalUsageError", "UnsafeOptInUsageError")
         override fun analyze(proxy: ImageProxy) {
@@ -153,7 +155,7 @@ class MainActivity : AppCompatActivity() {
             }
 
         private fun doTextRecognition(image: InputImage) {
-            detector.process(image)
+            textRecognizer.process(image)
                 .addOnSuccessListener { firebaseVisionText ->
                     // 認識した文字列を結果に反映する
                     listener(binding.viewModel!!.parseResultText(firebaseVisionText))
