@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "96861673785-ijjrdpsj39jvd6u0i81kvoabmh4176rq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rkapp.giftmanagement",
+            "certificate_hash": "b0355d356e8d416b760f9ccdf846b72dcfb633fa"
+          }
+        },
+        {
           "client_id": "96861673785-4fa1i0s6kn3ibu24qdr57b4q3olm1t9c.apps.googleusercontent.com",
           "client_type": 3
         }

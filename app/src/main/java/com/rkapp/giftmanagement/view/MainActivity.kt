@@ -1,77 +1,90 @@
 package com.rkapp.giftmanagement.view
 
-import android.graphics.Bitmap
+import android.Manifest
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
+import android.widget.FrameLayout
+import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
-import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.label.ImageLabeling
+import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.rkapp.giftmanagement.R
 import com.rkapp.giftmanagement.databinding.ActivityMainBinding
 import com.rkapp.giftmanagement.viewmodel.MainViewModel
-import com.rkapp.giftmanagement.R
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import org.opencv.core.*
+import kotlinx.coroutines.runBlocking
 
+typealias ODetection = (odt: Array<String?>) -> Unit
 
 class MainActivity : AppCompatActivity() {
-    private val REQUEST_CODE_FOR_PERMISSIONS = 1234
-    private val mainViewModel: MainViewModel by viewModels()
-
-    /*** Views  */
-    private lateinit var binding: ActivityMainBinding
-
-    /*** For CameraX  */
-    private var cameraInfo: CameraInfo? = null
-    private var preview: Preview? = null
-
     companion object {
-        /*** Fixed values  */
-        const val TAG = "MyApp"
-
-        init {
-            System.loadLibrary("opencv_java4")
-        }
+        private const val REQUEST_CODE_PERMISSIONS = 1234
+        val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 
-    override fun onCreate(
-        savedInstanceState: Bundle?
-    ) {
-        super.onCreate(savedInstanceState)
+    /*** View関連  */
+    private val mainViewModel: MainViewModel by viewModels()
+    private lateinit var binding: ActivityMainBinding
 
-        // Data Binding 準備(ないなら直下ので良い)
+    /*** CameraX関連  */
+    private var preview: Preview? = null
+    private var cameraInfo: CameraInfo? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // DataBindingをしないなら直下ので良い
 //        binding = ActivityMainBinding.inflate(layoutInflater)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         val view = binding.root
         setContentView(view)
         binding.viewModel = mainViewModel
 
-        if (binding.viewModel!!.checkPermissions(this)) {
+        if (binding.viewModel!!.checkPermissions(baseContext)) {
             startCamera()
         } else {
+            // カメラパーミッションをリクエスト
             ActivityCompat.requestPermissions(
                 this,
-                binding.viewModel!!.REQUIRED_PERMISSIONS,
-                REQUEST_CODE_FOR_PERMISSIONS
+                REQUIRED_PERMISSIONS,
+                REQUEST_CODE_PERMISSIONS
             )
         }
     }
 
+    // カメラ起動
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        val frameLayout = FrameLayout(this)
         cameraProviderFuture.addListener({
             lifecycleScope.launch {
                 runCatching {
                     val cameraProvider = cameraProviderFuture.get()
                     preview = Preview.Builder().build()
+                    // カメラ情報を取得する
                     cameraInfo = binding.viewModel!!.getCameraInfo(
                         this@MainActivity,
-                        MyImageAnalyzer(),
+                        ImageAnalyze { txtArr ->
+                            var showTxt = ""
+                            frameLayout.removeAllViews()
+                            for (txt in txtArr){
+                                txt?.let{
+                                    showTxt += " $txt"
+                                }
+                            }
+                            binding.bottomSheetText.text = showTxt
+                        },
                         cameraProvider,
                         preview!!
                     )
@@ -80,67 +93,71 @@ class MainActivity : AppCompatActivity() {
                         preview!!.setSurfaceProvider(binding.previewView.createSurfaceProvider(cameraInfo))
                     },
                     onFailure = {
-                        Log.e(TAG, "[startCamera] Use case binding failed", it)
+                        Toast.makeText(this@MainActivity,
+                            "カメラ起動失敗",
+                            Toast.LENGTH_SHORT).show()
                     }
                 )
             }
         }, ContextCompat.getMainExecutor(this))
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE_FOR_PERMISSIONS) {
-            if (binding.viewModel!!.checkPermissions(this)) {
-                startCamera()
-            } else {
-                Log.i(TAG, "[onRequestPermissionsResult] Failed to get permissions")
-                finish()
+    // 1フレーム単位で画像を分析する
+    inner class ImageAnalyze (private val listener: ODetection): ImageAnalysis.Analyzer {
+        private val labelOptions = ImageLabelerOptions.Builder()
+            .setConfidenceThreshold(0.7f)
+            .build()
+
+        private val textOptions = TextRecognizerOptions.DEFAULT_OPTIONS
+
+        private val labeler = ImageLabeling.getClient(labelOptions)
+
+        private val detector = TextRecognition.getClient(textOptions)
+
+        @SuppressLint("UnsafeExperimentalUsageError", "UnsafeOptInUsageError")
+        override fun analyze(proxy: ImageProxy) {
+            lifecycleScope.launch {
+                // 画像分類
+                imageFromProxy(proxy).collect {
+                    labeler.process(it)
+                        .addOnSuccessListener { labels ->
+                            for (label in labels) {
+                                val text = label.text
+                                Log.d("MyApp", "text: $text")
+                                if (text == "Paper") {
+                                    // 紙の文字だけ認識する　
+                                    runBlocking {
+                                        doTextRecognition(it)
+                                    }
+                                } else {
+                                    // TODO:あとで考える
+                                }
+                            }
+                        }
+                        .addOnCompleteListener {
+                            proxy.close()
+                        }
+                }
             }
         }
-    }
 
-    // 画像処理を行うインナークラス
-    inner class MyImageAnalyzer : ImageAnalysis.Analyzer {
-        private var matPrevious: Mat? = null
-        private fun bitmapFromImage(image: ImageProxy): Flow<Bitmap> =
+        @SuppressLint("UnsafeOptInUsageError")
+        private fun imageFromProxy(proxy: ImageProxy): Flow<InputImage> =
             flow {
-                /* Create cv::mat(RGB888) from image(NV21) */
-                val matOrg = binding.viewModel!!.getMatFromImage(image)
-
-                /* Fix image rotation (it looks image in PreviewView is automatically fixed by CameraX???) */
-                val mat = binding.viewModel!!.fixMatRotation(matOrg, binding.previewView.display.rotation)
-                Log.i(
-                    TAG,
-                    "[analyze] width = " + image.width + ", height = " + image.height + ", Rotation = " + binding.previewView.display.rotation
-                )
-                Log.i(TAG, "[analyze] mat width = " + matOrg.cols() + ", mat height = " + matOrg.rows())
-
-                /* Do some image processing */
-                val matOutput = binding.viewModel!!.makeMatImages(mat, matPrevious)
-                matPrevious = matOutput.second
-
-                /* Draw something for test */
-                binding.viewModel!!.drawSomething(matOutput.first)
-
-                /* Convert cv::mat to bitmap for drawing */
-                emit(binding.viewModel!!.bitmapFromMat(matOutput.first))
+                emit(binding.viewModel!!.imageFromProxy(proxy))
             }.catch {
-                /* ライフサイクル再スタート */
-                /* 回転させるとサイズが変わるためここで落ちる */
+                /**
+                 *  ライフサイクル再スタート
+                 *  回転させるとサイズが変わるためここで落ちる
+                 */
             }
 
-        override fun analyze(image: ImageProxy) {
-            lifecycleScope.launch {
-                bitmapFromImage(image).collect {
-                    binding.imageView.setImageBitmap(it)
+        private fun doTextRecognition(image: InputImage) {
+            detector.process(image)
+                .addOnSuccessListener { firebaseVisionText ->
+                    // 認識した文字列を結果に反映する
+                    listener(binding.viewModel!!.parseResultText(firebaseVisionText))
                 }
-                /* Close the image otherwise, this function is not called next time */
-                image.close()
-            }
         }
     }
 }
